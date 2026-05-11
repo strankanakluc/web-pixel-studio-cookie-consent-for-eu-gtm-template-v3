@@ -1,6 +1,7 @@
 ___TERMS_OF_SERVICE___
 
 By creating or modifying this file you agree to Google Tag Manager's Community
+  "categories": ["PERSONALIZATION", "UTILITY"],
 Template Gallery Developer Terms of Service available at
 https://developers.google.com/tag-manager/gallery-tos (or such other URL as
 Google may provide), as modified from time to time.
@@ -120,7 +121,7 @@ ___TEMPLATE_PARAMETERS___
         "name": "cookieName",
         "displayName": "Cookie Name (to read consent)",
         "help": "Name of the cookie that stores user consent preferences",
-        "defaultValue": "wp_consent"
+        "defaultValue": "ccwps_consent"
       },
       {
         "type": "TEXT",
@@ -191,144 +192,79 @@ ___TEMPLATE_PARAMETERS___
 ]
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
-const log = require('logToConsole');
-const setDefaultConsentState = require('setDefaultConsentState');
-const updateConsentState = require('updateConsentState');
-const getCookieValues = require('getCookieValues');
-const callInWindow = require('callInWindow');
-const gtagSet = require('gtagSet');
-const JSON = require('JSON');
+var setDefaultConsentState = require('setDefaultConsentState');
+var updateConsentState = require('updateConsentState');
+var getCookieValues = require('getCookieValues');
+var decodeUriComponent = require('decodeUriComponent');
+var makeInteger = require('makeInteger');
+var gtagSet = require('gtagSet');
+var JSON = require('JSON');
 
-// Parse comma-separated input string to array
-const splitInput = (input) => {
-  if (!input) return [];
-  return input.split(',')
-      .map(entry => entry.trim())
-      .filter(entry => entry.length !== 0);
-};
+var cookieName = data.cookieName ? data.cookieName : 'ccwps_consent';
+var parsedWait = makeInteger(data.waitForUpdateMs);
+var waitMs = (parsedWait === 0 || parsedWait) ? parsedWait : 500;
 
-// Parse default settings row data
-const parseCommandData = (settings) => {
-  const regions = settings['region'] ? splitInput(settings['region']) : [];
-  const granted = splitInput(settings['grantedTypes']);
-  const denied = splitInput(settings['deniedTypes']);
-  
-  const commandData = {};
-  
-  if (regions.length > 0) {
-    commandData.region = regions;
-  }
-  
-  granted.forEach(entry => {
-    commandData[entry] = 'granted';
+function hasFlagTrue(payload, key) {
+  return payload.indexOf('"' + key + '":true') !== -1;
+}
+
+function applyDefaultConsentState() {
+  setDefaultConsentState({
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'functionality_storage': 'denied',
+    'personalization_storage': 'denied',
+    'security_storage': 'granted',
+    'wait_for_update': waitMs
   });
-  
-  denied.forEach(entry => {
-    commandData[entry] = 'denied';
+}
+
+function applyCookieConsentUpdate() {
+  var cookieValues = getCookieValues(cookieName);
+  if (!cookieValues || cookieValues.length === 0) {
+    return;
+  }
+
+  var decoded = decodeUriComponent(cookieValues[0]);
+  var compact = decoded ? decoded.split(' ').join('') : '';
+  var looksLikeJson = compact && compact.indexOf('{') !== -1 && compact.indexOf('}') !== -1;
+
+  if (!looksLikeJson) {
+    return;
+  }
+
+  var targetingGranted = hasFlagTrue(compact, 'targeting');
+  var analyticsGranted = hasFlagTrue(compact, 'analytics');
+  var preferencesGranted = hasFlagTrue(compact, 'preferences');
+
+  updateConsentState({
+    'ad_storage': targetingGranted ? 'granted' : 'denied',
+    'ad_user_data': targetingGranted ? 'granted' : 'denied',
+    'ad_personalization': targetingGranted ? 'granted' : 'denied',
+    'analytics_storage': analyticsGranted ? 'granted' : 'denied',
+    'functionality_storage': preferencesGranted ? 'granted' : 'denied',
+    'personalization_storage': preferencesGranted ? 'granted' : 'denied',
+    'security_storage': 'granted'
   });
-  
-  return commandData;
-};
+}
 
-// Handle consent updates
-const onUserConsent = (consent) => {
-  if (data.debugMode) {
-    log('Consent updated:', consent);
-  }
-  
-  const consentModeStates = {
-    ad_storage: consent['ad_storage'] || 'denied',
-    ad_user_data: consent['ad_user_data'] || 'denied',
-    ad_personalization: consent['ad_personalization'] || 'denied',
-    analytics_storage: consent['analytics_storage'] || 'denied',
-    functionality_storage: consent['functionality_storage'] || 'granted',
-    personalization_storage: consent['personalization_storage'] || 'denied',
-    security_storage: consent['security_storage'] || 'granted'
-  };
-  
-  updateConsentState(consentModeStates);
-};
+function applyAdvancedSignals() {
+  var developerId = data.developerId ? data.developerId : 'dZTNiMT';
+  gtagSet('ads_data_redaction', true);
+  gtagSet('url_passthrough', true);
+  gtagSet('developer_id.' + developerId, true);
+}
 
-// Main execution
-const main = (data) => {
-  if (data.debugMode) {
-    log('Web Pixel Studio Cookie Consent for EU - Initializing');
-    log('data =', data);
-  }
-  
-  // Set optional gtag settings
-  if (data.adsDataRedaction) {
-    gtagSet('ads_data_redaction', true);
-  }
-  
-  if (data.urlPassthrough) {
-    gtagSet('url_passthrough', true);
-  }
-  
-  if (data.developerId && data.developerId.length > 0) {
-    gtagSet('developer_id.' + data.developerId, true);
-  }
-  
-  // Set default consent states
-  if (data.defaultSettings && data.defaultSettings.length > 0) {
-    data.defaultSettings.forEach(settings => {
-      const defaultData = parseCommandData(settings);
-      defaultData.wait_for_update = parseInt(data.waitForUpdateMs) || 500;
-      setDefaultConsentState(defaultData);
-    });
-  } else {
-    // Fallback default settings if none configured
-    setDefaultConsentState({
-      'wait_for_update': parseInt(data.waitForUpdateMs) || 500,
-      'ad_storage': 'denied',
-      'ad_user_data': 'denied',
-      'ad_personalization': 'denied',
-      'analytics_storage': 'denied',
-      'functionality_storage': 'granted',
-      'personalization_storage': 'denied',
-      'security_storage': 'granted'
-    });
-  }
-  
-  // Try to read consent from cookie
-  const cookieName = data.cookieName || 'wp_consent';
-  const cookieValues = getCookieValues(cookieName);
-  
-  if (cookieValues && cookieValues.length > 0) {
-    try {
-      const consentData = JSON.parse(cookieValues[0]);
-      if (consentData) {
-        onUserConsent(consentData);
-        if (data.debugMode) {
-          log('Consent loaded from cookie:', consentData);
-        }
-      }
-    } catch (e) {
-      if (data.debugMode) {
-        log('Error parsing consent cookie:', e);
-      }
-    }
-  }
-  
-  // Set up callback for consent changes
-  if (data.consentChangeCallbackName && data.consentChangeCallbackName.length > 0) {
-    try {
-      callInWindow(data.consentChangeCallbackName, onUserConsent);
-      if (data.debugMode) {
-        log('Consent callback registered:', data.consentChangeCallbackName);
-      }
-    } catch (e) {
-      if (data.debugMode) {
-        log('Error registering consent callback:', e);
-      }
-    }
-  }
-  
-  // Signal successful execution
+try {
+  applyAdvancedSignals();
+  applyDefaultConsentState();
+  applyCookieConsentUpdate();
   data.gtmOnSuccess();
-};
-
-main(data);
+} catch (e) {
+  data.gtmOnFailure();
+}
 
 ___WEB_PERMISSIONS___
 [
@@ -448,7 +384,7 @@ ___WEB_PERMISSIONS___
             "listItem": [
               {
                 "type": 1,
-                "string": "wp_consent"
+                "string": "ccwps_consent"
               }
             ]
           }
