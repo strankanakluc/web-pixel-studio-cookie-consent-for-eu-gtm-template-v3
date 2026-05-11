@@ -1,7 +1,7 @@
 homepage: "https://webpixelstudio.org"
 documentation: "https://webpixelstudio.org/cookie-consent-documentation"
 versions:
-  - sha: "93e41fae2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e"
+  - sha: cfcd1ee0a7bde9c4ccea5f9f1cd0bf788cf56341
     changeNotes: |
       Web Pixel Studio Cookie Consent for EU v3 – Google Consent Mode v3 edition
       - Google Consent Mode v3 support (extends the standard v2 version)
