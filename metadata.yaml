@@ -1,0 +1,13 @@
+homepage: "https://webpixelstudio.org"
+documentation: "https://webpixelstudio.org/cookie-consent-documentation"
+versions:
+  - sha: "e20f2cf5f26773f831572ad3c5e67326fea0b0f3"
+    changeNotes: |
+      Web Pixel Studio Cookie Consent for EU v3 – Google Consent Mode v3 edition
+      - Google Consent Mode v3 support (extends the standard v2 version)
+      - Activation of the developer_id.dZTNiMT signal for verified CMP identification
+      - All 7 consent types (ad_storage, ad_user_data, ad_personalization, analytics_storage, functionality_storage, personalization_storage, security_storage)
+      - Automatic setup of ads_data_redaction and url_passthrough
+      - Cookie-based consent reading (ccwps_consent)
+      - EU GDPR and EDPB compliance
+      - Lightweight, no external dependencies
