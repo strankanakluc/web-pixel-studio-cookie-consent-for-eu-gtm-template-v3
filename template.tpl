@@ -21,13 +21,13 @@ ___INFO___
   },
   "description": "Web Pixel Studio Cookie Consent for EU is a comprehensive Consent Mode 2.0 template designed to manage user consent in compliance with GDPR, EDPB guidelines, and other EU regulations. This template enables seamless integration with Google Tag Manager to collect, store, and manage user consent preferences for analytics, advertising, and personalization.",
   "containerContexts": ["WEB"],
-  "docUrl": "https://webpixelstudio.com/cookie-consent-documentation",
-  "termsUrl": "https://webpixelstudio.com/terms",
-  "homepageUrl": "https://webpixelstudio.com",
-  "privacyUrl": "https://webpixelstudio.com/privacy",
-  "serviceUrl": "https://webpixelstudio.com/support",
+  "docUrl": "https://webpixelstudio.org/cookie-consent-documentation",
+  "termsUrl": "https://webpixelstudio.org/terms",
+  "homepageUrl": "https://webpixelstudio.org",
+  "privacyUrl": "https://webpixelstudio.org/privacy",
+  "serviceUrl": "https://webpixelstudio.org/support",
   "author": "Web Pixel Studio",
-  "authorsEmail": ["support@webpixelstudio.com"],
+  "authorsEmail": ["support@webpixelstudio.org"],
   "__wpc": false
 }
 
@@ -747,4 +747,4 @@ INSTALLATION:
 6. Trigger the tag on "Consent Initialization - All Pages"
 
 SUPPORT:
-For documentation and support, visit: https://webpixelstudio.com/cookie-consent-documentation
+For documentation and support, visit: https://webpixelstudio.org/cookie-consent-documentation
