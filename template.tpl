@@ -18,316 +18,24 @@ ___INFO___
   "containerContexts": ["WEB"]
 }
 
+
 ___TEMPLATE_PARAMETERS___
+
 [
   {
-    "type": "GROUP",
-    "name": "defaultConsentSettings",
-    "displayName": "Default Consent Settings",
-    "groupStyle": "ZIPPY_OPEN",
-    "fields": [
-      {
-        "type": "PARAM_TABLE",
-        "name": "defaultSettings",
-        "displayName": "Default Consent States by Region",
-        "help": "Define default consent states for different regions. Leave region blank to apply settings globally.",
-        "paramTableColumns": [
-          {
-            "columnType": "TEXT",
-            "name": "region",
-            "displayName": "Region (ISO 3166-2, e.g., ES, DE, FR, or leave blank for all)",
-            "isUnique": true
-          },
-          {
-            "columnType": "TEXT",
-            "name": "grantedTypes",
-            "displayName": "Granted Consent Types (comma-separated: ad_storage, analytics_storage, etc.)"
-          },
-          {
-            "columnType": "TEXT",
-            "name": "deniedTypes",
-            "displayName": "Denied Consent Types (comma-separated)"
-          }
-        ]
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "enableWaitForUpdate",
-        "displayName": "Enable wait_for_update",
-        "help": "Wait for user consent choices before firing tags (500ms default)",
-        "defaultValue": true
-      },
-      {
-        "type": "TEXT",
-        "name": "waitForUpdateMs",
-        "displayName": "Wait for Update Timeout (milliseconds)",
-        "help": "How long to wait for user consent choices (default: 500ms)",
-        "defaultValue": "500"
-      }
-    ]
-  },
-  {
-    "type": "GROUP",
-    "name": "consentTypes",
-    "displayName": "Consent Types Configuration",
-    "groupStyle": "ZIPPY_CLOSED",
-    "fields": [
-      {
-        "type": "CHECKBOX",
-        "name": "ad_storage",
-        "displayName": "ad_storage (Advertising cookies)"
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "ad_user_data",
-        "displayName": "ad_user_data (User data for ads)"
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "ad_personalization",
-        "displayName": "ad_personalization (Personalized ads)"
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "analytics_storage",
-        "displayName": "analytics_storage (Analytics cookies)"
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "functionality_storage",
-        "displayName": "functionality_storage (Functionality cookies)"
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "personalization_storage",
-        "displayName": "personalization_storage (Personalization cookies)"
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "security_storage",
-        "displayName": "security_storage (Security cookies)"
-      }
-    ]
-  },
-  {
-    "type": "GROUP",
-    "name": "cookieConfiguration",
-    "displayName": "Cookie Configuration",
-    "groupStyle": "ZIPPY_CLOSED",
-    "fields": [
-      {
-        "type": "TEXT",
-        "name": "cookieName",
-        "displayName": "Cookie Name (to read consent)",
-        "help": "Name of the cookie that stores user consent preferences",
-        "defaultValue": "ccwps_consent"
-      },
-      {
-        "type": "TEXT",
-        "name": "cookieDomain",
-        "displayName": "Cookie Domain",
-        "help": "Domain where consent is stored (optional)",
-        "defaultValue": ""
-      }
-    ]
-  },
-  {
-    "type": "GROUP",
-    "name": "optionalSettings",
-    "displayName": "Optional Settings",
-    "groupStyle": "ZIPPY_CLOSED",
-    "fields": [
-      {
-        "type": "CHECKBOX",
-        "name": "adsDataRedaction",
-        "displayName": "Redact Ads Data",
-        "help": "Redact ad click information when ad_storage is denied",
-        "defaultValue": false
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "urlPassthrough",
-        "displayName": "Pass through URL parameters",
-        "help": "Enable URL passthrough for gclid/dclid parameters",
-        "defaultValue": false
-      },
-      {
-        "type": "TEXT",
-        "name": "developerId",
-        "displayName": "Developer ID (optional)",
-        "help": "If you are a CMP vendor with a Google-issued developer ID, enter it here",
-        "defaultValue": ""
-      },
-      {
-        "type": "TEXT",
-        "name": "consentChangeCallbackName",
-        "displayName": "Consent Change Callback Function Name",
-        "help": "Name of window function to call when consent is loaded",
-        "defaultValue": "handleConsentUpdate"
-      }
-    ]
-  },
-  {
-    "type": "GROUP",
-    "name": "advancedOptions",
-    "displayName": "Advanced Options",
-    "groupStyle": "ZIPPY_CLOSED",
-    "fields": [
-      {
-        "type": "CHECKBOX",
-        "name": "debugMode",
-        "displayName": "Debug Mode",
-        "help": "Enable console logging for debugging",
-        "defaultValue": false
-      },
-      {
-        "type": "CHECKBOX",
-        "name": "acceptTermsOfService",
-        "displayName": "I agree to the Google Tag Manager Community Template Gallery Terms of Service",
-        "required": true
-      }
-    ]
+    "type": "TEXT",
+    "name": "waitForUpdate",
+    "displayName": "wait_for_update (ms)",
+    "simpleValueType": true,
+    "defaultValue": "500",
+    "help": "Čas v milisekundách, ktorý GTM čaká na aktualizáciu súhlasu pred spustením tagov s predvoleným stavom."
   }
 ]
 
-___SANDBOXED_JS_FOR_WEB_TEMPLATE___
-var setDefaultConsentState = require('setDefaultConsentState');
-var updateConsentState = require('updateConsentState');
-var getCookieValues = require('getCookieValues');
-var decodeUriComponent = require('decodeUriComponent');
-var makeInteger = require('makeInteger');
-var gtagSet = require('gtagSet');
-var JSON = require('JSON');
-
-var cookieName = data.cookieName ? data.cookieName : 'ccwps_consent';
-var parsedWait = makeInteger(data.waitForUpdateMs);
-var waitMs = (parsedWait === 0 || parsedWait) ? parsedWait : 500;
-
-function hasFlagTrue(payload, key) {
-  return payload.indexOf('"' + key + '":true') !== -1;
-}
-
-function applyDefaultConsentState() {
-  setDefaultConsentState({
-    'ad_storage': 'denied',
-    'ad_user_data': 'denied',
-    'ad_personalization': 'denied',
-    'analytics_storage': 'denied',
-    'functionality_storage': 'denied',
-    'personalization_storage': 'denied',
-    'security_storage': 'granted',
-    'wait_for_update': waitMs
-  });
-}
-
-function applyCookieConsentUpdate() {
-  var cookieValues = getCookieValues(cookieName);
-  if (!cookieValues || cookieValues.length === 0) {
-    return;
-  }
-
-  var decoded = decodeUriComponent(cookieValues[0]);
-  var compact = decoded ? decoded.split(' ').join('') : '';
-  var looksLikeJson = compact && compact.indexOf('{') !== -1 && compact.indexOf('}') !== -1;
-
-  if (!looksLikeJson) {
-    return;
-  }
-
-  var targetingGranted = hasFlagTrue(compact, 'targeting');
-  var analyticsGranted = hasFlagTrue(compact, 'analytics');
-  var preferencesGranted = hasFlagTrue(compact, 'preferences');
-
-  updateConsentState({
-    'ad_storage': targetingGranted ? 'granted' : 'denied',
-    'ad_user_data': targetingGranted ? 'granted' : 'denied',
-    'ad_personalization': targetingGranted ? 'granted' : 'denied',
-    'analytics_storage': analyticsGranted ? 'granted' : 'denied',
-    'functionality_storage': preferencesGranted ? 'granted' : 'denied',
-    'personalization_storage': preferencesGranted ? 'granted' : 'denied',
-    'security_storage': 'granted'
-  });
-}
-
-function applyAdvancedSignals() {
-  var developerId = data.developerId ? data.developerId : 'dZTNiMT';
-  gtagSet('ads_data_redaction', true);
-  gtagSet('url_passthrough', true);
-  gtagSet('developer_id.' + developerId, true);
-}
-
-try {
-  applyAdvancedSignals();
-  applyDefaultConsentState();
-  applyCookieConsentUpdate();
-  data.gtmOnSuccess();
-} catch (e) {
-  data.gtmOnFailure();
-}
 
 ___WEB_PERMISSIONS___
+
 [
-  {
-    "instance": {
-      "key": {
-        "publicId": "access_globals",
-        "versionId": "1"
-      },
-      "param": [
-        {
-          "key": "keys",
-          "value": {
-            "type": 2,
-            "listItem": [
-              {
-                "type": 3,
-                "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "key"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  },
-                  {
-                    "type": 1,
-                    "string": "execute"
-                  }
-                ],
-                "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "handleConsentUpdate"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ]
-    },
-    "clientAnnotations": {
-      "isEditedByUser": true
-    },
-    "isRequired": true
-  },
   {
     "instance": {
       "key": {
@@ -410,218 +118,92 @@ ___WEB_PERMISSIONS___
               {
                 "type": 3,
                 "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "consentType"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
+                  { "type": 1, "string": "consentType" },
+                  { "type": 1, "string": "read" },
+                  { "type": 1, "string": "write" }
                 ],
                 "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "ad_storage"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
+                  { "type": 1, "string": "ad_storage" },
+                  { "type": 8, "boolean": false },
+                  { "type": 8, "boolean": true }
                 ]
               },
               {
                 "type": 3,
                 "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "consentType"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
+                  { "type": 1, "string": "consentType" },
+                  { "type": 1, "string": "read" },
+                  { "type": 1, "string": "write" }
                 ],
                 "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "ad_user_data"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
+                  { "type": 1, "string": "ad_user_data" },
+                  { "type": 8, "boolean": false },
+                  { "type": 8, "boolean": true }
                 ]
               },
               {
                 "type": 3,
                 "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "consentType"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
+                  { "type": 1, "string": "consentType" },
+                  { "type": 1, "string": "read" },
+                  { "type": 1, "string": "write" }
                 ],
                 "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "ad_personalization"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
+                  { "type": 1, "string": "ad_personalization" },
+                  { "type": 8, "boolean": false },
+                  { "type": 8, "boolean": true }
                 ]
               },
               {
                 "type": 3,
                 "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "consentType"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
+                  { "type": 1, "string": "consentType" },
+                  { "type": 1, "string": "read" },
+                  { "type": 1, "string": "write" }
                 ],
                 "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "analytics_storage"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
+                  { "type": 1, "string": "analytics_storage" },
+                  { "type": 8, "boolean": false },
+                  { "type": 8, "boolean": true }
                 ]
               },
               {
                 "type": 3,
                 "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "consentType"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
+                  { "type": 1, "string": "consentType" },
+                  { "type": 1, "string": "read" },
+                  { "type": 1, "string": "write" }
                 ],
                 "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "functionality_storage"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
+                  { "type": 1, "string": "functionality_storage" },
+                  { "type": 8, "boolean": false },
+                  { "type": 8, "boolean": true }
                 ]
               },
               {
                 "type": 3,
                 "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "consentType"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
+                  { "type": 1, "string": "consentType" },
+                  { "type": 1, "string": "read" },
+                  { "type": 1, "string": "write" }
                 ],
                 "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "personalization_storage"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
+                  { "type": 1, "string": "personalization_storage" },
+                  { "type": 8, "boolean": false },
+                  { "type": 8, "boolean": true }
                 ]
               },
               {
                 "type": 3,
                 "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "consentType"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
+                  { "type": 1, "string": "consentType" },
+                  { "type": 1, "string": "read" },
+                  { "type": 1, "string": "write" }
                 ],
                 "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "security_storage"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
+                  { "type": 1, "string": "security_storage" },
+                  { "type": 8, "boolean": false },
+                  { "type": 8, "boolean": true }
                 ]
               }
             ]
@@ -636,37 +218,103 @@ ___WEB_PERMISSIONS___
   }
 ]
 
-___TESTS___
-scenarios: []
+
+___SANDBOXED_JS_FOR_WEB_TEMPLATE___
+
+var setDefaultConsentState = require('setDefaultConsentState');
+var updateConsentState     = require('updateConsentState');
+var getCookieValues        = require('getCookieValues');
+var decodeUriComponent     = require('decodeUriComponent');
+var makeInteger            = require('makeInteger');
+var gtagSet                = require('gtagSet');
+var JSON                   = require('JSON');
+
+var cookieName = 'ccwps_consent';
+var parsedWait = makeInteger(data.waitForUpdate);
+var waitMs     = (parsedWait === 0 || parsedWait) ? parsedWait : 500;
+
+function hasFlagTrue(payload, key) {
+  return payload.indexOf('"' + key + '":true') !== -1;
+}
+
+// 1. Nastaviť predvolený stav – všetko odmietnuté
+setDefaultConsentState({
+  'ad_storage':              'denied',
+  'ad_user_data':            'denied',
+  'ad_personalization':      'denied',
+  'analytics_storage':       'denied',
+  'functionality_storage':   'denied',
+  'personalization_storage': 'denied',
+  'security_storage':        'granted',
+  'wait_for_update':         waitMs
+});
+
+// 1b. Additional consent-mode controls (also used by plugin frontend snippet)
+gtagSet('ads_data_redaction', true);
+gtagSet('url_passthrough', true);
+gtagSet('developer_id.dZTNiMT', true);
+
+// 2. Prečítať existujúci consent cookie a okamžite aktualizovať stav
+var cookieValues = getCookieValues(cookieName);
+if (cookieValues && cookieValues.length > 0) {
+  var decoded = decodeUriComponent(cookieValues[0]);
+  var compact = decoded ? decoded.split(' ').join('') : '';
+  var looksLikeJson = compact && compact.indexOf('{') !== -1 && compact.indexOf('}') !== -1;
+
+  if (looksLikeJson) {
+    var targetingGranted   = hasFlagTrue(compact, 'targeting');
+    var analyticsGranted   = hasFlagTrue(compact, 'analytics');
+    var preferencesGranted = hasFlagTrue(compact, 'preferences');
+
+    updateConsentState({
+      'ad_storage':              targetingGranted   ? 'granted' : 'denied',
+      'ad_user_data':            targetingGranted   ? 'granted' : 'denied',
+      'ad_personalization':      targetingGranted   ? 'granted' : 'denied',
+      'analytics_storage':       analyticsGranted   ? 'granted' : 'denied',
+      'functionality_storage':   preferencesGranted ? 'granted' : 'denied',
+      'personalization_storage': preferencesGranted ? 'granted' : 'denied',
+      'security_storage':        'granted'
+    });
+  }
+}
+
+data.gtmOnSuccess();
+
 
 ___NOTES___
-Web Pixel Studio Cookie Consent for EU v2.0
 
-CHANGELOG:
-- 2.0: Initial release of Community Template Gallery version
-  * Full support for Google Consent Mode 2.0
-  * EU GDPR and EDPB compliance
-  * Multi-region support with ISO 3166-2 codes
-  * Support for all 7 consent types
-  * Optional ads data redaction
-  * Optional URL passthrough
-  * Developer ID support
-  * Cookie-based consent reading
-  * Callback support for real-time consent updates
-  * Comprehensive debug mode
+## Návod na použitie
 
-REQUIREMENTS:
-- Google Tag Manager (GTM)
-- Website with consent cookie or consent management system
-- Trigger: "Consent Initialization - All Pages" recommended
+1. GTM → Šablóny → Šablóny tagov → Nová
+2. Tri bodky (⋮) → Importovať → nahrať súbor `web-pixel-studio-cookie-consent-eu.tpl`
+3. Tagy → Nový → zvoliť "Web Pixel Studio Cookie Consent for EU"
+4. Trigger: **Inicializácia súhlasu – všetky stránky** (Consent Initialization – All Pages)
+5. Uložiť a publikovať
 
-INSTALLATION:
-1. Import this template into your GTM container
-2. Create a new tag using this template
-3. Configure default consent settings per region
-4. Set the cookie name where your CMP stores consent
-5. Set the callback function name to handle consent changes
-6. Trigger the tag on "Consent Initialization - All Pages"
+## Ako to funguje
+
+Šablóna beží PRED ostatnými tagmi (Consent Initialization fáza):
+1. Nastaví všetky consent signály na `denied` (predvolené odmietnutie)
+2. Nastaví doplnkové signály `ads_data_redaction`, `url_passthrough` a `developer_id.dZTNiMT`
+3. Ak návštevník už má uložený cookie `ccwps_consent`, okamžite aktualizuje stav podľa jeho preferencií – bez načítania stránky
+4. Keď návštevník interaguje s bannerom, plugin zavolá `gtag('consent','update',…)` a GTM okamžite reaguje
+
+## Mapovanie kategórií
+
+| Cookie pole    | GTM Consent signal                                   |
+|----------------|------------------------------------------------------|
+| `analytics`    | `analytics_storage`                                  |
+| `targeting`    | `ad_storage`, `ad_user_data`, `ad_personalization`   |
+| `preferences`  | `functionality_storage`, `personalization_storage`   |
+| *(vždy)*       | `security_storage` → `granted`                       |
+
+## Odporúčané nastavenie GA4 tagu
+
+V Google Analytics: GA4 Configuration tagu:
+- Rozšírené nastavenia → Nastavenia súhlasu
+- Zaškrtnúť: **Vyžadovať ďalší súhlas na spustenie tagu**
+- Typ súhlasu: `analytics_storage`
+
 
 SUPPORT:
 For documentation and support, visit: https://webpixelstudio.org/cookie-consent-documentation
